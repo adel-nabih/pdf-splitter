@@ -25,7 +25,6 @@ val/
 test/
 dataset.yaml
 runs/
-*.pt
 yolo11n.pt
 yolo26n.pt
 
