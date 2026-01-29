@@ -2,19 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# The "Fail-Proof" update: 
-# 1. Clear existing lists 
-# 2. Update with a fix for 'missing' repositories
-# 3. Install dependencies
-RUN apt-get clean && apt-get update --fix-missing && apt-get install -y \
+# The modern replacement for libgl1-mesa-glx is libgl1
+# We also add tesseract-ocr-eng to ensure the English data is there
+RUN apt-get update && apt-get install -y \
     tesseract-ocr \
-    libgl1-mesa-glx \
+    tesseract-ocr-eng \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 
-# Install without cache to keep image small
+# Install dependencies without cache
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
