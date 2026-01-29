@@ -5,8 +5,8 @@ python-multipart==0.0.21
 
 # ML/AI (Specific versions that hopefully work with Railway)
 ultralytics==8.3.0
-torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+torch>=2.10.0 --index-url https://download.pytorch.org/whl/cpu
+torchvision>=0.25.0 --index-url https://download.pytorch.org/whl/cpu
 
 # PDF Processing (The Fix)
 pymupdf==1.24.1
