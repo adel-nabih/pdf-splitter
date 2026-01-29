@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+venv2/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Training Data (too large for git)
+train/
+val/
+test/
+dataset.yaml
+runs/
+*.pt
+yolo11n.pt
+yolo26n.pt
+
+# Temporary files
+*.log
+*.tmp
+debug_*.png
+temp_*
+.pytest_cache/
+
+# Output
+output/
+*.zip
+
+# Environment
+.env
+.env.local
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+

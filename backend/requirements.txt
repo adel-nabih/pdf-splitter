@@ -1,0 +1,23 @@
+# Core Dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# ML/AI
+ultralytics==8.3.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# PDF Processing
+PyMuPDF==1.23.8
+Pillow==10.1.0
+
+# Computer Vision
+opencv-python==4.8.1.78
+numpy==1.24.3
+
+# OCR
+pytesseract==0.3.10
+
+# Data Processing
+pandas==2.1.3
