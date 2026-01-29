@@ -1,23 +1,21 @@
-# Core Dependencies
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+# Web Framework
+fastapi==0.128.0
+uvicorn==0.40.0
+python-multipart==0.0.21
 
-# ML/AI
+# ML/AI (Specific versions that hopefully work with Railway)
 ultralytics==8.3.0
-torch>=2.2.0
-torchvision>=0.17.0
+torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
 
-# PDF Processing
-PyMuPDF==1.24.0
+# PDF Processing (The Fix)
+pymupdf==1.24.1
 Pillow==10.2.0
 
-# Computer Vision
-opencv-python==4.8.1.78
-numpy==1.24.3
-
-# OCR
-pytesseract==0.3.10
+# Computer Vision & OCR
+opencv-python-headless==4.8.1.78
+numpy==1.26.4
+pytesseract==0.3.13
 
 # Data Processing
-pandas==2.1.3
+pandas==2.2.3
