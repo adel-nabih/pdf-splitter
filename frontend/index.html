@@ -209,6 +209,127 @@
             color: #667eea;
             text-decoration: none;
         }
+
+        /* Modal styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #999;
+            cursor: pointer;
+            padding: 5px 10px;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .modal p {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-form input,
+        .modal-form textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .modal-form input:focus,
+        .modal-form textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-form textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-form button {
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .modal-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .modal-skip {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .modal-skip button {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 5px;
+        }
+
+        .modal-skip button:hover {
+            color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -243,6 +364,33 @@
         </div>
     </div>
 
+    <!-- Email Collection Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <button class="modal-close" id="modalClose">×</button>
+            <h2>🎉 Almost done!</h2>
+            <p>Your questions are ready! Help us improve by sharing your email (optional):</p>
+            
+            <form class="modal-form" id="emailForm">
+                <input 
+                    type="email" 
+                    id="emailInput" 
+                    placeholder="name@email.com (optional)"
+                    autocomplete="email"
+                >
+                <textarea 
+                    id="commentInput" 
+                    placeholder="Any feedback or suggestions? (optional)"
+                ></textarea>
+                <button type="submit">Download Questions</button>
+            </form>
+            
+            <div class="modal-skip">
+                <button type="button" id="skipButton">Skip and download</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Auto-detect API URL
         const API_BASE = window.location.origin;
@@ -257,6 +405,15 @@
         const loading = document.getElementById('loading');
         const errorMsg = document.getElementById('errorMsg');
         const successMsg = document.getElementById('successMsg');
+
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalClose = document.getElementById('modalClose');
+        const emailForm = document.getElementById('emailForm');
+        const skipButton = document.getElementById('skipButton');
+        const emailInput = document.getElementById('emailInput');
+        const commentInput = document.getElementById('commentInput');
+
+        let pendingDownload = null; // Store blob data for download after modal
 
         let selectedFile = null;
 
@@ -327,6 +484,115 @@
             successMsg.textContent = '✅ ' + message;
             successMsg.classList.add('show');
         }
+
+        // Show modal
+        function showModal() {
+            modalOverlay.classList.add('show');
+        }
+
+        // Hide modal
+        function hideModal() {
+            modalOverlay.classList.remove('show');
+            emailInput.value = '';
+            commentInput.value = '';
+        }
+
+        // Trigger download
+        function triggerDownload(blob, filename, questionCount) {
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            a.style.display = 'none';
+            
+            document.body.appendChild(a);
+            setTimeout(() => a.click(), 10);
+            
+            setTimeout(() => {
+                if (document.body.contains(a)) {
+                    document.body.removeChild(a);
+                }
+                window.URL.revokeObjectURL(downloadUrl);
+            }, 2000);
+
+            const message = questionCount 
+                ? `Success! Found ${questionCount} questions. Your file is downloading now.` 
+                : 'Success! Your questions are downloading.';
+            
+            showSuccess(message);
+        }
+
+        // Submit email (send to backend or analytics)
+        async function submitEmail(email, comment) {
+            if (!email && !comment) return; // Skip if both empty
+
+            try {
+                // Send to your backend or analytics service
+                await fetch(`${API_BASE}/api/feedback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email || null,
+                        comment: comment || null,
+                        timestamp: new Date().toISOString()
+                    })
+                }).catch(() => {
+                    // Silently fail - don't block download
+                    console.log('Feedback submission failed, but continuing...');
+                });
+            } catch (error) {
+                // Don't show error to user - just continue
+                console.log('Feedback error:', error);
+            }
+        }
+
+        // Modal close button
+        modalClose.addEventListener('click', () => {
+            hideModal();
+            if (pendingDownload) {
+                triggerDownload(
+                    pendingDownload.blob,
+                    pendingDownload.filename,
+                    pendingDownload.questionCount
+                );
+                pendingDownload = null;
+            }
+        });
+
+        // Skip button
+        skipButton.addEventListener('click', () => {
+            hideModal();
+            if (pendingDownload) {
+                triggerDownload(
+                    pendingDownload.blob,
+                    pendingDownload.filename,
+                    pendingDownload.questionCount
+                );
+                pendingDownload = null;
+            }
+        });
+
+        // Email form submit
+        emailForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = emailInput.value.trim();
+            const comment = commentInput.value.trim();
+            
+            // Submit in background (don't wait)
+            submitEmail(email, comment);
+            
+            // Close modal and trigger download immediately
+            hideModal();
+            if (pendingDownload) {
+                triggerDownload(
+                    pendingDownload.blob,
+                    pendingDownload.filename,
+                    pendingDownload.questionCount
+                );
+                pendingDownload = null;
+            }
+        });
 
         // Split worksheet
         splitBtn.addEventListener('click', async () => {
@@ -406,36 +672,32 @@
                     throw new Error('Received empty file. Please try again.');
                 }
 
-                // Trigger download
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = filename;
-                a.style.display = 'none';
-                
-                document.body.appendChild(a);
-                setTimeout(() => a.click(), 10);
-                
-                setTimeout(() => {
-                    if (document.body.contains(a)) {
-                        document.body.removeChild(a);
-                    }
-                    window.URL.revokeObjectURL(downloadUrl);
-                }, 2000);
+                // Store download data and show modal
+                pendingDownload = {
+                    blob: blob,
+                    filename: filename,
+                    questionCount: questionCount
+                };
 
-                const message = questionCount 
-                    ? `Success! Found ${questionCount} questions. Your file is downloading now. The ZIP contains a combined PDF plus individual question files.` 
-                    : 'Success! Your questions are downloading. Check your Downloads folder.';
-                
-                console.log('Success!', message);
-                showSuccess(message);
+                // Hide loading and show modal
+                loading.classList.remove('show');
+                showModal();
 
             } catch (error) {
                 console.error('Error:', error);
                 showError(error.message);
             } finally {
-                loading.classList.remove('show');
-                splitBtn.disabled = false;
+                // Only hide loading here, don't reset button yet
+                // Button will be re-enabled after modal is closed
+                if (!pendingDownload) {
+                    loading.classList.remove('show');
+                    splitBtn.disabled = false;
+                } else {
+                    // Re-enable after a delay to prevent double-clicks
+                    setTimeout(() => {
+                        splitBtn.disabled = false;
+                    }, 1000);
+                }
             }
         });
 

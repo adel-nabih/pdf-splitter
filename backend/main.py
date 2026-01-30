@@ -31,6 +31,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Questions-Count"],
 )
 
 
@@ -159,17 +160,17 @@ async def split_worksheet(
         combined_pdf.save(combined_path)
         combined_pdf.close()
         
-        # create the zip file in memory
+        # Create ZIP in memory
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            # add the combined PDF
+            # Add combined PDF
             zip_file.write(combined_path, 'all_questions_combined.pdf')
             
-            # add question pdfs
+            # Add question PDFs
             for pdf_file in sorted(output_files):
                 zip_file.write(pdf_file, pdf_file.name)
             
-            
+            # Add debug images if enabled
             if debug:
                 for debug_file in Path(temp_dir).glob('debug_*.png'):
                     zip_file.write(debug_file, f"debug/{debug_file.name}")
@@ -234,22 +235,50 @@ def get_info():
     }
 
 
-current_dir = Path(__file__).parent
-frontend_path = current_dir / "frontend"
-
-if frontend_path.exists() and frontend_path.is_dir():
-    from fastapi.responses import FileResponse
+@app.post("/api/feedback")
+async def collect_feedback(request: dict):
+    """
+    Collect user feedback and emails for MVP validation.
+    Logs to console for now - integrate with your database/email service later.
+    """
+    try:
+        email = request.get('email')
+        comment = request.get('comment')
+        timestamp = request.get('timestamp')
+        
+        # Log to console (in production, save to database)
+        print("\n" + "="*70)
+        print("📧 USER FEEDBACK")
+        print("="*70)
+        print(f"Time: {timestamp}")
+        print(f"Email: {email or '(not provided)'}")
+        print(f"Comment: {comment or '(not provided)'}")
+        print("="*70 + "\n")
+        
+        # TODO: Save to database or send to email/analytics service
+        # Example: save_to_database(email, comment, timestamp)
+        
+        return {"status": "success", "message": "Thank you for your feedback!"}
     
-    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+    except Exception as e:
+        print(f"Feedback error: {e}")
+        # Don't fail - just return success anyway
+        return {"status": "success"}
+
+
+# IMPORTANT: Serve frontend static files LAST
+# This must be after all API routes to prevent it from catching API calls
+frontend_path = Path("../frontend")
+if frontend_path.exists() and frontend_path.is_dir():
+    # Serve index.html at root
+    from fastapi.responses import FileResponse
     
     @app.get("/")
     async def serve_frontend():
-        index_file = frontend_path / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file)
-        raise HTTPException(status_code=404, detail="index.html not found")
-else:
-    print(f"⚠ WARNING: Frontend folder not found at {frontend_path}")
+        return FileResponse(frontend_path / "index.html")
+    
+    # Don't use StaticFiles mount as it interferes with API routes
+
 
 if __name__ == "__main__":
     import uvicorn
