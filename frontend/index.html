@@ -393,7 +393,7 @@
 
     <script>
         // Auto-detect API URL
-        const API_BASE = 'pdf-splitter-production-9d84.up.railway.app';
+        const API_BASE = 'https://pdf-splitter-production-9d84.up.railway.app';
 
         // Elements
         const uploadArea = document.getElementById('uploadArea');
@@ -608,7 +608,7 @@
                 formData.append('file', selectedFile);
 
                 // Use optimal settings automatically (no user config needed)
-                const url = `${API_BASE}/split?dpi=300&conf_threshold=0.05`;
+                const url = `${API_BASE}/api/split?dpi=300&conf_threshold=0.05`;
 
                 console.log('Uploading to:', url);
                 console.log('File:', selectedFile.name, selectedFile.size);
