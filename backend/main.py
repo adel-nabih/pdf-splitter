@@ -25,9 +25,16 @@ app = FastAPI(
 )
 
 # CORS for frontend
+# Define which domains are allowed to talk to this API
+origins = [
+    "https://examcrop.com",
+    "https://www.examcrop.com",
+    "http://localhost:8000", # For your local testing
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,   # <--- Now it uses your list instead of "*"
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -282,23 +289,13 @@ if frontend_path.exists() and frontend_path.is_dir():
 
 if __name__ == "__main__":
     import uvicorn
+    import os
+    
+    # This allows Railway to tell your app which port to use
+    port = int(os.environ.get("PORT", 8000))
     
     print("="*70)
-    print("YOLOv11 Custom Question Splitter v11.0.0")
+    print(f"Running on port: {port}")
     print("="*70)
     
-    if os.path.exists("best.pt"):
-        print("✓ Model found: best.pt")
-    else:
-        print("⚠ Model not found!")
-        print("  Run: python train_yolo.py")
-    
-    if frontend_path.exists():
-        print(f"✓ Frontend found: {frontend_path}")
-    else:
-        print("⚠ Frontend folder not found")
-    
-    print("="*70)
-    print(f"\n🌐 Open in browser: http://localhost:8000\n")
-    
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
