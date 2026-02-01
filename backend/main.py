@@ -61,7 +61,7 @@ async def split_worksheet(
     file: UploadFile = File(...),
     dpi: int = 300,
     debug: bool = False,
-    conf_threshold: float = 0.25
+    conf_threshold: float = 0.35
 ):
     """
     Split worksheets using custom-trained YOLOv11 model.
