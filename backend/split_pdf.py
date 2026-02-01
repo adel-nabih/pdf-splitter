@@ -301,7 +301,7 @@ class YOLOQuestionSplitter:
             out_page.set_rotation(0)
             
             filepath = Path(output_dir) / f"question_{q_num:02d}.pdf"
-            out_pdf.save(filepath)
+            out_pdf.save(filepath, garbage=4, deflate=True, clean=True, pretty=False,)
             out_pdf.close()
             
             if self.debug:

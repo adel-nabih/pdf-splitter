@@ -84,13 +84,15 @@ async def split_worksheet(
         )
     
     MAX_SIZE = 20 * 1024 * 1024
+    MAX_PAGES = 20  # Free tier limit
+    
     contents = await file.read()
     file_size_mb = len(contents) / (1024 * 1024)
     
     if len(contents) > MAX_SIZE:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large ({file_size_mb:.1f}MB). Max: 20MB"
+            detail=f"File too large ({file_size_mb:.1f}MB). Maximum file size is 20MB during our testing phase. For larger files, please wait for our Pro plan launch!"
         )
     
     allowed_extensions = ['.jpg', '.jpeg', '.png', '.pdf']
@@ -122,7 +124,29 @@ async def split_worksheet(
         with open(input_path, 'wb') as f:
             f.write(contents)
         
-        print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB)")
+        # Check page count for PDFs BEFORE processing
+        if file_ext == '.pdf':
+            try:
+                doc = fitz.open(input_path)
+                page_count = len(doc)
+                doc.close()
+                
+                if page_count > MAX_PAGES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Your PDF has {page_count} pages. During our testing phase, we support up to {MAX_PAGES} pages per document. We're working hard to bring you unlimited pages with our Pro plan soon! For now, please split your document into smaller sections. Thank you for your understanding! 🙏"
+                    )
+                
+                print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB, {page_count} pages)")
+            except HTTPException:
+                raise
+            except Exception as e:
+                print(f"Warning: Could not check page count: {e}")
+                print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB)")
+        else:
+            # For images, assume 1 page
+            print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB, 1 page)")
+        
         print(f"  DPI: {dpi}, Confidence: {conf_threshold}")
         
         # Create output directory
@@ -164,7 +188,7 @@ async def split_worksheet(
             combined_pdf.insert_pdf(src_pdf)
             src_pdf.close()
         combined_path = os.path.join(output_dir, 'all_questions_combined.pdf')
-        combined_pdf.save(combined_path)
+        combined_pdf.save(combined_path, garbage=4, deflate=True, clean=True, pretty=False,)
         combined_pdf.close()
         
         # Create ZIP in memory
@@ -238,6 +262,7 @@ def get_info():
         "description": "Custom-trained YOLOv11 for worksheet question detection",
         "supported_formats": ["PDF", "JPG", "JPEG", "PNG"],
         "max_file_size": "20MB",
+        "max_pages": "20 pages (testing phase)",
         "recommended_dpi": 300
     }
 
