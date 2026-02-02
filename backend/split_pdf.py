@@ -209,7 +209,7 @@ class YOLOQuestionSplitter:
         for block in sorted_by_conf:
             is_duplicate = False
             for unique in unique_blocks:
-                if calc_iou(block, unique) > 0.5:
+                if calc_iou(block, unique) > 0.3:
                     is_duplicate = True
                     break
             if not is_duplicate:
