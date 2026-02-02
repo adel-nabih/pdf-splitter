@@ -119,6 +119,8 @@ class YOLOQuestionSplitter:
                 classes = result.boxes.cls.cpu().numpy()
                 
                 for i, (box, conf, cls) in enumerate(zip(boxes, confidences, classes)):
+                    if cls != 0:  # class 0 is 'question'
+                        continue
                     x1, y1, x2, y2 = box
                     w = x2 - x1
                     h = y2 - y1
