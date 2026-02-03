@@ -312,6 +312,38 @@
             box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
         }
 
+        .checkbox-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            margin-top: 2px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .checkbox-label span {
+            flex: 1;
+        }
+
+        .modal-form button[type="submit"] {
+            margin-top: 5px;
+        }
+
+        .modal-form button[type="submit"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .modal-skip {
             text-align: center;
             margin-top: 15px;
@@ -369,24 +401,35 @@
         <div class="modal">
             <button class="modal-close" id="modalClose">×</button>
             <h2>🎉 Almost done!</h2>
-            <p>Your questions are ready! Help us improve by sharing your email (optional):</p>
+            <p>Your questions are ready! <strong>Get 20% off our Pro plan</strong> by sharing your email:</p>
             
             <form class="modal-form" id="emailForm">
                 <input 
                     type="email" 
                     id="emailInput" 
-                    placeholder="name@email.com (optional)"
+                    placeholder="name@email.com"
                     autocomplete="email"
+                    required
                 >
                 <textarea 
                     id="commentInput" 
-                    placeholder="Any feedback or suggestions? (optional)"
+                    placeholder="What would make this tool perfect for you? (optional)"
                 ></textarea>
-                <button type="submit">Download Questions</button>
+                
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
+                        id="consentCheckbox" 
+                        required
+                    >
+                    <span>I agree to receive updates and promotional emails about ExamCrop</span>
+                </label>
+                
+                <button type="submit">Get Discount & Download</button>
             </form>
             
             <div class="modal-skip">
-                <button type="button" id="skipButton">Skip and download</button>
+                <button type="button" id="skipButton">Skip discount and download</button>
             </div>
         </div>
     </div>
