@@ -392,13 +392,8 @@
     </div>
 
     <script>
-        // Auto-detect API URL
-        const API_BASE = (
-            window.location.hostname === "localhost" || 
-            window.location.hostname === "127.0.0.1"
-        ) ? "" : window.location.origin;
+        const API_BASE = "";
         
-            // Elements
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const fileInfo = document.getElementById('fileInfo');
@@ -416,21 +411,18 @@
         const emailInput = document.getElementById('emailInput');
         const commentInput = document.getElementById('commentInput');
 
-        let pendingDownload = null; // Store blob data for download after modal
+        let pendingDownload = null;
 
         let selectedFile = null;
 
-        // Upload area click
         uploadArea.addEventListener('click', () => fileInput.click());
 
-        // File input change
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 handleFile(e.target.files[0]);
             }
         });
 
-        // Drag and drop
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
@@ -448,7 +440,6 @@
             }
         });
 
-        // Handle file selection
         function handleFile(file) {
             selectedFile = file;
             
@@ -461,46 +452,39 @@
             hideMessages();
         }
 
-        // Format file size
         function formatFileSize(bytes) {
             if (bytes < 1024) return bytes + ' B';
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         }
 
-        // Hide messages
         function hideMessages() {
             errorMsg.classList.remove('show');
             successMsg.classList.remove('show');
         }
 
-        // Show error
         function showError(message) {
             hideMessages();
             errorMsg.textContent = '❌ ' + message;
             errorMsg.classList.add('show');
         }
 
-        // Show success
         function showSuccess(message) {
             hideMessages();
             successMsg.textContent = '✅ ' + message;
             successMsg.classList.add('show');
         }
 
-        // Show modal
         function showModal() {
             modalOverlay.classList.add('show');
         }
 
-        // Hide modal
         function hideModal() {
             modalOverlay.classList.remove('show');
             emailInput.value = '';
             commentInput.value = '';
         }
 
-        // Trigger download
         function triggerDownload(blob, filename, questionCount) {
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -525,7 +509,6 @@
             showSuccess(message);
         }
 
-        // Submit email (send to backend or analytics)
         async function submitEmail(email, comment) {
             if (!email && !comment) return;
 
@@ -548,7 +531,6 @@
             }
         }
 
-        // Modal close button
         modalClose.addEventListener('click', () => {
             hideModal();
             if (pendingDownload) {
@@ -561,7 +543,6 @@
             }
         });
 
-        // Skip button
         skipButton.addEventListener('click', () => {
             hideModal();
             if (pendingDownload) {
@@ -574,17 +555,14 @@
             }
         });
 
-        // Email form submit
         emailForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = emailInput.value.trim();
             const comment = commentInput.value.trim();
             
-            // Submit in background (don't wait)
             submitEmail(email, comment);
             
-            // Close modal and trigger download immediately
             hideModal();
             if (pendingDownload) {
                 triggerDownload(
@@ -596,7 +574,6 @@
             }
         });
 
-        // Split worksheet
         splitBtn.addEventListener('click', async () => {
             if (!selectedFile) return;
 
@@ -605,17 +582,14 @@
             hideMessages();
 
             try {
-                // Create form data
                 const formData = new FormData();
                 formData.append('file', selectedFile);
 
-                // Use optimal settings automatically (no user config needed)
                 const url = `${API_BASE}/api/split?dpi=300&conf_threshold=0.05`;
 
                 console.log('Uploading to:', url);
                 console.log('File:', selectedFile.name, selectedFile.size);
 
-                // Upload with timeout
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
 
@@ -646,7 +620,6 @@
                     throw new Error(errorMsg);
                 }
 
-                // Get question count and filename from headers
                 const questionCount = response.headers.get('X-Questions-Count');
                 const contentDisposition = response.headers.get('Content-Disposition');
                 let filename = 'questions.zip';
@@ -660,7 +633,6 @@
 
                 console.log('Downloading:', filename, 'Questions:', questionCount);
 
-                // Get blob
                 let blob;
                 try {
                     blob = await response.blob();
@@ -674,14 +646,12 @@
                     throw new Error('Received empty file. Please try again.');
                 }
 
-                // Store download data and show modal
                 pendingDownload = {
                     blob: blob,
                     filename: filename,
                     questionCount: questionCount
                 };
 
-                // Hide loading and show modal
                 loading.classList.remove('show');
                 showModal();
 
