@@ -392,7 +392,24 @@
     </div>
 
     <script>
-        const API_BASE = "";
+        const API_BASE = (() => {
+            const hostname = window.location.hostname;
+            
+            // Local development
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:8000';
+            }
+            
+            // Production on examcrop.com
+            if (hostname === 'examcrop.com' || hostname === 'www.examcrop.com') {
+                return 'https://pdf-splitter-production-9d84.up.railway.app';
+            }
+            
+            // Fallback to current origin (shouldn't happen)
+            return '';
+        })();
+
+console.log('Using API:', API_BASE);
         
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
