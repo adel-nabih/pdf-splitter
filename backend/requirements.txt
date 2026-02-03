@@ -19,3 +19,6 @@ pytesseract==0.3.13
 
 # Data Processing
 pandas==2.2.3
+
+pocketbase==0.15.0
+python-dotenv==1.0.0

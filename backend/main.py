@@ -1,6 +1,6 @@
 """
 FastAPI Backend for Worksheet Splitter
-YOLOv11 Custom Model for Question Detection
+YOLOv26 Custom Model for Question Detection
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -16,29 +16,73 @@ import io
 import traceback
 import fitz
 
+from pocketbase import PocketBase
+from datetime import datetime
+from contextlib import asynccontextmanager
+
 from split_pdf import YOLOQuestionSplitter
+from dotenv import load_dotenv
+load_dotenv()
+
+# 1. Detect environment
+IS_RAILWAY = os.environ.get("RAILWAY_ENVIRONMENT") is not None
+
+# 2. Set URL based on environment
+if IS_RAILWAY:
+    # Production: Fast internal link
+    POCKETBASE_URL = "http://pocketbase.railway.internal:8080"
+else:
+    # Local: Public link for your MacBook
+    POCKETBASE_URL = "https://pocketbase-production-4854.up.railway.app"
+
+# 3. Get Credentials from Environment (No hardcoded strings!)
+# The second argument is None, which forces the app to look at the system
+POCKETBASE_EMAIL = os.environ.get("POCKETBASE_EMAIL")
+POCKETBASE_PASSWORD = os.environ.get("POCKETBASE_PASSWORD")
+
+pb = PocketBase(POCKETBASE_URL)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # This runs ON STARTUP
+    try:
+        pb.admins.auth_with_password(POCKETBASE_EMAIL, POCKETBASE_PASSWORD)
+        print("✅ Successfully authenticated with PocketBase")
+    except Exception as e:
+        print(f"❌ PocketBase Auth Failed: {e}")
+    
+    yield  # The app runs while this is held
+    
+    # This runs ON SHUTDOWN (optional)
+    print("Shutting down...")
+
 
 app = FastAPI(
     title="Worksheet Splitter - YOLOv11 Custom",
     description="AI-powered question splitting using custom-trained YOLOv11",
-    version="11.0.0"
+    version="11.0.0",
+    lifespan=lifespan
 )
 
 # CORS for frontend
 # Define which domains are allowed to talk to this API
 origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost",
+    "http://127.0.0.1",
     "https://examcrop.com",
     "https://www.examcrop.com",
-    "http://localhost:8000", # For your local testing
+    "https://pdf-splitter-production-9d84.up.railway.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,   # <--- Now it uses your list instead of "*"
+    allow_origins=["*"],  # Use "*" during local testing to stop the errors immediately
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Questions-Count"],
+    expose_headers=["X-Questions-Count", "Content-Disposition"],
 )
 
 
@@ -61,7 +105,7 @@ async def split_worksheet(
     file: UploadFile = File(...),
     dpi: int = 300,
     debug: bool = False,
-    conf_threshold: float = 0.45
+    conf_threshold: float = 0.15
 ):
     """
     Split worksheets using custom-trained YOLOv11 model.
@@ -269,33 +313,37 @@ def get_info():
 
 @app.post("/api/feedback")
 async def collect_feedback(request: dict):
-    """
-    Collect user feedback and emails for MVP validation.
-    Logs to console for now - integrate with your database/email service later.
-    """
+    """Collect user feedback and save to PocketBase"""
     try:
-        email = request.get('email')
-        comment = request.get('comment')
-        timestamp = request.get('timestamp')
+        email = request.get('email', '')
+        comment = request.get('comment', '')
+        timestamp = request.get('timestamp', '')
         
-        # Log to console (in production, save to database)
-        print("\n" + "="*70)
-        print("📧 USER FEEDBACK")
-        print("="*70)
-        print(f"Time: {timestamp}")
-        print(f"Email: {email or '(not provided)'}")
-        print(f"Comment: {comment or '(not provided)'}")
-        print("="*70 + "\n")
+        # Validate
+        if not email and not comment:
+            return {"status": "success", "message": "No data provided"}
         
-        # TODO: Save to database or send to email/analytics service
-        # Example: save_to_database(email, comment, timestamp)
+        # Save to PocketBase
+        data = {
+            "email": email or "",
+            "feedback": comment or "",
+            "timestamp": timestamp or ""
+        }
         
-        return {"status": "success", "message": "Thank you for your feedback!"}
-    
+        record = pb.collection('leads').create(data)
+        
+        print(f"✓ Saved lead: {email}")
+        
+        return {
+            "status": "success",
+            "message": "Thank you for your feedback!",
+            "id": record.id
+        }
+        
     except Exception as e:
-        print(f"Feedback error: {e}")
-        # Don't fail - just return success anyway
-        return {"status": "success"}
+        print(f"❌ PocketBase save error: {e}")
+        # Don't fail - just log the error
+        return {"status": "error", "message": str(e)}
 
 
 # IMPORTANT: Serve frontend static files LAST

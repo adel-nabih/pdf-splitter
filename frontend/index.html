@@ -393,9 +393,12 @@
 
     <script>
         // Auto-detect API URL
-        const API_BASE = 'https://pdf-splitter-production-9d84.up.railway.app';
-
-        // Elements
+        const API_BASE = (
+            window.location.hostname === "localhost" || 
+            window.location.hostname === "127.0.0.1"
+        ) ? "" : window.location.origin;
+        
+            // Elements
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const fileInfo = document.getElementById('fileInfo');
@@ -524,25 +527,24 @@
 
         // Submit email (send to backend or analytics)
         async function submitEmail(email, comment) {
-            if (!email && !comment) return; // Skip if both empty
+            if (!email && !comment) return;
 
             try {
-                // Send to your backend or analytics service
-                await fetch(`${API_BASE}/api/feedback`, {
+                const response = await fetch(`${API_BASE}/api/feedback`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        email: email || null,
-                        comment: comment || null,
+                        email: email || "",
+                        comment: comment || "",
                         timestamp: new Date().toISOString()
                     })
-                }).catch(() => {
-                    // Silently fail - don't block download
-                    console.log('Feedback submission failed, but continuing...');
                 });
+                
+                const data = await response.json();
+                console.log('Feedback response:', data);
+                
             } catch (error) {
-                // Don't show error to user - just continue
-                console.log('Feedback error:', error);
+                console.error('Feedback error:', error);
             }
         }
 
