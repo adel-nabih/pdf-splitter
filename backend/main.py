@@ -346,19 +346,31 @@ async def collect_feedback(request: dict):
         return {"status": "error", "message": str(e)}
 
 
-# IMPORTANT: Serve frontend static files LAST
-# This must be after all API routes to prevent it from catching API calls
-frontend_path = Path("../frontend")
-if frontend_path.exists() and frontend_path.is_dir():
-    # Serve index.html at root
-    from fastapi.responses import FileResponse
+@app.get("/")
+@app.get("/{path_name:path}")
+async def serve_frontend(path_name: str = None):
+    # 1. Define where the frontend files might live
+    # Docker usually puts them in /app/frontend, but local is ../frontend
+    possible_folders = [Path("frontend"), Path("../frontend"), Path(".")]
     
-    @app.get("/")
-    async def serve_frontend():
-        return FileResponse(frontend_path / "index.html")
-    
-    # Don't use StaticFiles mount as it interferes with API routes
+    # 2. If the browser is asking for a specific file (like script.js or styles.css)
+    if path_name and "." in path_name:
+        for folder in possible_folders:
+            file_path = folder / path_name
+            if file_path.exists():
+                return FileResponse(file_path)
 
+    # 3. Otherwise, serve the main index.html
+    for folder in possible_folders:
+        index_path = folder / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+
+    # 4. If we get here, the files are missing
+    raise HTTPException(
+        status_code=404, 
+        detail="Frontend files not found. Check your Docker COPY commands."
+    )
 
 if __name__ == "__main__":
     import uvicorn
