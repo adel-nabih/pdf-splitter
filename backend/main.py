@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 1. Detect environment
-IS_RAILWAY = os.environ.get("RAILWAY_ENVIRONMENT") is not None
+IS_RAILWAY = os.environ.get("RAILWAY_ENVIRONMENT_NAME") is not None
 
 # 2. Set URL based on environment
 if IS_RAILWAY:
