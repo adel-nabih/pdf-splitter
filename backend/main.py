@@ -1,12 +1,11 @@
 """
 FastAPI Backend for Worksheet Splitter
-YOLOv26 Custom Model for Question Detection
+YOLOv11 Custom Model for Question Detection
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import tempfile
 import shutil
 import zipfile
@@ -16,13 +15,16 @@ import io
 import traceback
 import fitz
 
-import shutil
 from datetime import datetime
 import uuid
 
 from pocketbase import PocketBase
-from datetime import datetime
 from contextlib import asynccontextmanager
+
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+import json
 
 from split_pdf import YOLOQuestionSplitter
 from dotenv import load_dotenv
@@ -39,44 +41,118 @@ else:
     # Local: Public link for your MacBook
     POCKETBASE_URL = "https://pocketbase-production-4854.up.railway.app"
 
-# 3. Get Credentials from Environment (No hardcoded strings!)
-# The second argument is None, which forces the app to look at the system
+# 3. Get Credentials from Environment
 POCKETBASE_EMAIL = os.environ.get("POCKETBASE_EMAIL")
 POCKETBASE_PASSWORD = os.environ.get("POCKETBASE_PASSWORD")
 
 pb = PocketBase(POCKETBASE_URL)
 
-SAVE_UPLOADS = os.environ.get("SAVE_UPLOADS", "true").lower() == "true"
-UPLOAD_STORAGE_DIR = Path("/mnt/user-data/upload-logs")
+# Google Drive Configuration
+SAVE_TO_DRIVE = os.environ.get("SAVE_TO_DRIVE", "true").lower() == "true"
+DRIVE_FOLDER_ID = "1LZgS5aNOwmEEYAbqIh3Vl285nTb8lt02"
+
+# Initialize on startup
+drive_service = None
+
+
+def get_drive_service():
+    """Initialize Google Drive API client"""
+    try:
+        # Get credentials from environment variable
+        creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+        if not creds_json:
+            print("⚠️ GOOGLE_CREDENTIALS not found")
+            return None
+        
+        # Parse JSON credentials
+        creds_info = json.loads(creds_json)
+        credentials = service_account.Credentials.from_service_account_info(
+            creds_info,
+            scopes=['https://www.googleapis.com/auth/drive.file']
+        )
+        
+        service = build('drive', 'v3', credentials=credentials)
+        return service
+    except Exception as e:
+        print(f"❌ Failed to initialize Drive: {e}")
+        return None
+
+
+def upload_to_drive(local_path, drive_filename, parent_folder_id):
+    """Upload a file to Google Drive"""
+    try:
+        file_metadata = {
+            'name': drive_filename,
+            'parents': [parent_folder_id]
+        }
+        
+        media = MediaFileUpload(local_path, resumable=True)
+        
+        file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, webViewLink'
+        ).execute()
+        
+        return file.get('id'), file.get('webViewLink')
+    except Exception as e:
+        print(f"❌ Drive upload failed: {e}")
+        return None, None
+
+
+def create_drive_folder(folder_name, parent_folder_id):
+    """Create a folder in Google Drive"""
+    try:
+        file_metadata = {
+            'name': folder_name,
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [parent_folder_id]
+        }
+        
+        folder = drive_service.files().create(
+            body=file_metadata,
+            fields='id, webViewLink'
+        ).execute()
+        
+        return folder.get('id')
+    except Exception as e:
+        print(f"❌ Drive folder creation failed: {e}")
+        return None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # This runs ON STARTUP
+    """Startup and shutdown events"""
+    global drive_service
+    
+    # PocketBase Auth
     try:
         pb.admins.auth_with_password(POCKETBASE_EMAIL, POCKETBASE_PASSWORD)
         print("✅ Successfully authenticated with PocketBase")
     except Exception as e:
         print(f"❌ PocketBase Auth Failed: {e}")
 
-    if SAVE_UPLOADS:
-        UPLOAD_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        print(f"✅ Upload logging enabled: {UPLOAD_STORAGE_DIR}")
+    # Google Drive Init
+    if SAVE_TO_DRIVE:
+        drive_service = get_drive_service()
+        if drive_service:
+            print(f"✅ Google Drive enabled: folder {DRIVE_FOLDER_ID}")
+        else:
+            print("⚠️ Google Drive initialization failed")
     
-    yield  # The app runs while this is held
+    yield  # App runs
     
-    # This runs ON SHUTDOWN (optional)
     print("Shutting down...")
 
 
 app = FastAPI(
-    title="Worksheet Splitter - YOLOv26 Custom",
-    description="AI-powered question splitting using custom-trained YOLOv26",
+    title="Worksheet Splitter - YOLOv11 Custom",
+    description="AI-powered question splitting using custom-trained YOLOv11",
     version="11.0.0",
     lifespan=lifespan
 )
 
 # CORS for frontend
-# Define which domains are allowed to talk to this API
 origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
@@ -120,14 +196,26 @@ async def split_worksheet(
 ):
     """
     Split worksheets using custom-trained YOLOv11 model.
+    
+    Args:
+        file: PDF, JPG, JPEG, or PNG
+        dpi: Processing resolution (300-600 recommended)
+        debug: Save intermediate visualization images
+        conf_threshold: YOLO confidence threshold (0.05-0.95)
+    
+    Returns:
+        ZIP file with individual question PDFs
     """
     
     # Check if model exists
     if not os.path.exists("best.pt"):
-        raise HTTPException(status_code=503, detail="Service Unavailable")
+        raise HTTPException(
+            status_code=503,
+            detail="Service Unavailable"
+        )
     
     MAX_SIZE = 20 * 1024 * 1024
-    MAX_PAGES = 20
+    MAX_PAGES = 20  # Free tier limit
     
     contents = await file.read()
     file_size_mb = len(contents) / (1024 * 1024)
@@ -135,7 +223,7 @@ async def split_worksheet(
     if len(contents) > MAX_SIZE:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large ({file_size_mb:.1f}MB). Maximum file size is 20MB during our testing phase."
+            detail=f"File too large ({file_size_mb:.1f}MB). Maximum file size is 20MB during our testing phase. For larger files, please wait for our Pro plan launch!"
         )
     
     allowed_extensions = ['.jpg', '.jpeg', '.png', '.pdf']
@@ -148,10 +236,16 @@ async def split_worksheet(
         )
     
     if not (100 <= dpi <= 600):
-        raise HTTPException(status_code=400, detail="DPI must be between 100 and 600")
+        raise HTTPException(
+            status_code=400,
+            detail="DPI must be between 100 and 600"
+        )
     
     if not (0.05 <= conf_threshold <= 0.95):
-        raise HTTPException(status_code=400, detail="Confidence threshold must be between 0.05 and 0.95")
+        raise HTTPException(
+            status_code=400,
+            detail="Confidence threshold must be between 0.05 and 0.95"
+        )
     
     # Generate unique ID for this upload
     upload_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -164,34 +258,6 @@ async def split_worksheet(
         with open(input_path, 'wb') as f:
             f.write(contents)
         
-        # 🆕 SAVE ORIGINAL UPLOAD (if enabled)
-        if SAVE_UPLOADS:
-            try:
-                upload_log_dir = UPLOAD_STORAGE_DIR / upload_id
-                upload_log_dir.mkdir(parents=True, exist_ok=True)
-                
-                # Save original file
-                saved_input = upload_log_dir / f"original_{file.filename}"
-                shutil.copy2(input_path, saved_input)
-                
-                # Save metadata
-                metadata = {
-                    "upload_id": upload_id,
-                    "timestamp": datetime.now().isoformat(),
-                    "filename": file.filename,
-                    "file_size_mb": round(file_size_mb, 2),
-                    "dpi": dpi,
-                    "conf_threshold": conf_threshold,
-                }
-                
-                with open(upload_log_dir / "metadata.json", 'w') as f:
-                    import json
-                    json.dump(metadata, f, indent=2)
-                
-                print(f"📁 Saved upload: {upload_id}")
-            except Exception as e:
-                print(f"⚠️ Failed to save upload log: {e}")
-        
         # Check page count for PDFs BEFORE processing
         if file_ext == '.pdf':
             try:
@@ -202,7 +268,7 @@ async def split_worksheet(
                 if page_count > MAX_PAGES:
                     raise HTTPException(
                         status_code=413,
-                        detail=f"Your PDF has {page_count} pages. During our testing phase, we support up to {MAX_PAGES} pages per document."
+                        detail=f"Your PDF has {page_count} pages. During our testing phase, we support up to {MAX_PAGES} pages per document. We're working hard to bring you unlimited pages with our Pro plan soon! For now, please split your document into smaller sections. Thank you for your understanding! 🙏"
                     )
                 
                 print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB, {page_count} pages)")
@@ -212,6 +278,7 @@ async def split_worksheet(
                 print(f"Warning: Could not check page count: {e}")
                 print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB)")
         else:
+            # For images, assume 1 page
             print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB, 1 page)")
         
         print(f"  DPI: {dpi}, Confidence: {conf_threshold}")
@@ -232,41 +299,64 @@ async def split_worksheet(
                 conf_threshold=conf_threshold
             )
         except SystemExit:
-            raise HTTPException(status_code=422, detail="No questions detected")
+            raise HTTPException(
+                status_code=422,
+                detail="No questions detected"
+            )
         
         # Check output
         output_files = list(Path(output_dir).glob('*.pdf'))
         
         if not output_files:
-            raise HTTPException(status_code=422, detail="No questions detected")
+            raise HTTPException(
+                status_code=422,
+                detail="No questions detected"
+            )
         
         print(f"✓ Successfully split into {len(output_files)} questions")
         
-        # 🆕 SAVE OUTPUT FILES (if enabled)
-        if SAVE_UPLOADS:
+        # 🆕 UPLOAD TO GOOGLE DRIVE
+        if SAVE_TO_DRIVE and drive_service:
             try:
-                upload_log_dir = UPLOAD_STORAGE_DIR / upload_id
-                output_log_dir = upload_log_dir / "output"
-                output_log_dir.mkdir(exist_ok=True)
+                # Create a folder for this upload
+                upload_folder_name = f"{upload_id}_{Path(file.filename).stem}"
+                upload_folder_id = create_drive_folder(upload_folder_name, DRIVE_FOLDER_ID)
                 
-                # Copy all output PDFs
-                for pdf_file in output_files:
-                    shutil.copy2(pdf_file, output_log_dir / pdf_file.name)
-                
-                # Update metadata with results
-                metadata_path = upload_log_dir / "metadata.json"
-                if metadata_path.exists():
-                    import json
-                    with open(metadata_path, 'r') as f:
-                        metadata = json.load(f)
-                    metadata["questions_detected"] = len(output_files)
-                    metadata["processing_status"] = "success"
+                if upload_folder_id:
+                    # Upload original file
+                    upload_to_drive(input_path, f"original_{file.filename}", upload_folder_id)
+                    
+                    # Create and upload metadata
+                    metadata = {
+                        "upload_id": upload_id,
+                        "timestamp": datetime.now().isoformat(),
+                        "filename": file.filename,
+                        "file_size_mb": round(file_size_mb, 2),
+                        "dpi": dpi,
+                        "conf_threshold": conf_threshold,
+                        "questions_detected": len(output_files),
+                        "processing_status": "success"
+                    }
+                    
+                    metadata_path = os.path.join(temp_dir, 'metadata.json')
                     with open(metadata_path, 'w') as f:
                         json.dump(metadata, f, indent=2)
+                    
+                    upload_to_drive(metadata_path, 'metadata.json', upload_folder_id)
+                    
+                    # Create output subfolder
+                    output_folder_id = create_drive_folder('output', upload_folder_id)
+                    
+                    if output_folder_id:
+                        # Upload all output PDFs
+                        for pdf_file in output_files:
+                            upload_to_drive(str(pdf_file), pdf_file.name, output_folder_id)
+                    
+                    print(f"📁 Uploaded to Google Drive: {upload_id}")
                 
-                print(f"📁 Saved outputs: {len(output_files)} questions")
             except Exception as e:
-                print(f"⚠️ Failed to save output log: {e}")
+                print(f"⚠️ Failed to upload to Drive: {e}")
+                # Don't fail the request if Drive upload fails
         
         # Create combined PDF with all questions
         combined_pdf = fitz.open()
@@ -275,17 +365,20 @@ async def split_worksheet(
             combined_pdf.insert_pdf(src_pdf)
             src_pdf.close()
         combined_path = os.path.join(output_dir, 'all_questions_combined.pdf')
-        combined_pdf.save(combined_path, garbage=4, deflate=True, clean=True, pretty=False)
+        combined_pdf.save(combined_path, garbage=4, deflate=True, clean=True, pretty=False,)
         combined_pdf.close()
         
         # Create ZIP in memory
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add combined PDF
             zip_file.write(combined_path, 'all_questions_combined.pdf')
             
+            # Add question PDFs
             for pdf_file in sorted(output_files):
                 zip_file.write(pdf_file, pdf_file.name)
             
+            # Add debug images if enabled
             if debug:
                 for debug_file in Path(temp_dir).glob('debug_*.png'):
                     zip_file.write(debug_file, f"debug/{debug_file.name}")
@@ -314,27 +407,47 @@ async def split_worksheet(
         error_trace = traceback.format_exc()
         print(f"\n❌ ERROR: {error_trace}")
         
-        # 🆕 LOG ERRORS (if enabled)
-        if SAVE_UPLOADS:
+        # 🆕 LOG ERRORS TO DRIVE
+        if SAVE_TO_DRIVE and drive_service:
             try:
-                upload_log_dir = UPLOAD_STORAGE_DIR / upload_id
-                metadata_path = upload_log_dir / "metadata.json"
-                if metadata_path.exists():
-                    import json
-                    with open(metadata_path, 'r') as f:
-                        metadata = json.load(f)
-                    metadata["processing_status"] = "error"
-                    metadata["error"] = str(e)
+                upload_folder_name = f"{upload_id}_ERROR"
+                upload_folder_id = create_drive_folder(upload_folder_name, DRIVE_FOLDER_ID)
+                
+                if upload_folder_id:
+                    # Upload error log
+                    error_path = os.path.join(temp_dir, 'error.log')
+                    with open(error_path, 'w') as f:
+                        f.write(error_trace)
+                    upload_to_drive(error_path, 'error.log', upload_folder_id)
+                    
+                    # Upload original file if it exists
+                    if os.path.exists(input_path):
+                        upload_to_drive(input_path, f"original_{file.filename}", upload_folder_id)
+                    
+                    # Upload metadata with error
+                    metadata = {
+                        "upload_id": upload_id,
+                        "timestamp": datetime.now().isoformat(),
+                        "filename": file.filename,
+                        "file_size_mb": round(file_size_mb, 2),
+                        "dpi": dpi,
+                        "conf_threshold": conf_threshold,
+                        "processing_status": "error",
+                        "error": str(e)
+                    }
+                    
+                    metadata_path = os.path.join(temp_dir, 'metadata.json')
                     with open(metadata_path, 'w') as f:
                         json.dump(metadata, f, indent=2)
-                
-                # Save error trace
-                with open(upload_log_dir / "error.log", 'w') as f:
-                    f.write(error_trace)
+                    upload_to_drive(metadata_path, 'metadata.json', upload_folder_id)
+                    
             except Exception as log_err:
-                print(f"⚠️ Failed to log error: {log_err}")
+                print(f"⚠️ Failed to log error to Drive: {log_err}")
         
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Processing failed: {str(e)}"
+        )
     
     finally:
         if temp_dir and os.path.exists(temp_dir):
