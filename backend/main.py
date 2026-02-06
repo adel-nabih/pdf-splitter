@@ -72,7 +72,11 @@ def get_drive_service():
         )
         
         service = build('drive', 'v3', credentials=credentials)
+        print("✅ Google Drive service initialized successfully")
         return service
+    except json.JSONDecodeError as e:
+        print(f"❌ Failed to parse GOOGLE_CREDENTIALS JSON: {e}")
+        return None
     except Exception as e:
         print(f"❌ Failed to initialize Drive: {e}")
         return None
@@ -81,6 +85,10 @@ def get_drive_service():
 def upload_to_drive(local_path, drive_filename, parent_folder_id):
     """Upload a file to Google Drive"""
     try:
+        if not os.path.exists(local_path):
+            print(f"⚠️ File not found for upload: {local_path}")
+            return None, None
+            
         file_metadata = {
             'name': drive_filename,
             'parents': [parent_folder_id]
@@ -94,9 +102,10 @@ def upload_to_drive(local_path, drive_filename, parent_folder_id):
             fields='id, webViewLink'
         ).execute()
         
+        print(f"✅ Uploaded: {drive_filename} (ID: {file.get('id')})")
         return file.get('id'), file.get('webViewLink')
     except Exception as e:
-        print(f"❌ Drive upload failed: {e}")
+        print(f"❌ Drive upload failed for {drive_filename}: {e}")
         return None, None
 
 
@@ -114,6 +123,7 @@ def create_drive_folder(folder_name, parent_folder_id):
             fields='id, webViewLink'
         ).execute()
         
+        print(f"✅ Created folder: {folder_name} (ID: {folder.get('id')})")
         return folder.get('id')
     except Exception as e:
         print(f"❌ Drive folder creation failed: {e}")
@@ -258,6 +268,11 @@ async def split_worksheet(
         with open(input_path, 'wb') as f:
             f.write(contents)
         
+        print(f"\n{'='*70}")
+        print(f"📁 Saved input file: {input_path}")
+        print(f"   File exists: {os.path.exists(input_path)}")
+        print(f"   File size: {os.path.getsize(input_path) / 1024:.1f} KB")
+        
         # Check page count for PDFs BEFORE processing
         if file_ext == '.pdf':
             try:
@@ -314,9 +329,30 @@ async def split_worksheet(
             )
         
         print(f"✓ Successfully split into {len(output_files)} questions")
+        print(f"📂 Output files:")
+        for pdf in sorted(output_files):
+            print(f"   - {pdf.name} ({pdf.stat().st_size / 1024:.1f} KB)")
         
-        # 🆕 UPLOAD TO GOOGLE DRIVE
+        # Create combined PDF with all questions
+        combined_pdf = fitz.open()
+        for pdf_file in sorted(output_files):
+            src_pdf = fitz.open(pdf_file)
+            combined_pdf.insert_pdf(src_pdf)
+            src_pdf.close()
+        combined_path = os.path.join(output_dir, 'all_questions_combined.pdf')
+        combined_pdf.save(combined_path, garbage=4, deflate=True, clean=True, pretty=False,)
+        combined_pdf.close()
+        
+        print(f"✓ Created combined PDF: {combined_path}")
+        print(f"   File exists: {os.path.exists(combined_path)}")
+        print(f"   File size: {os.path.getsize(combined_path) / 1024:.1f} KB")
+        
+        # 🆕 UPLOAD TO GOOGLE DRIVE - AFTER ALL FILES ARE CREATED
         if SAVE_TO_DRIVE and drive_service:
+            print(f"\n{'='*70}")
+            print("📤 Starting Google Drive upload...")
+            print(f"{'='*70}")
+            
             try:
                 # Create a folder for this upload
                 upload_folder_name = f"{upload_id}_{Path(file.filename).stem}"
@@ -324,9 +360,11 @@ async def split_worksheet(
                 
                 if upload_folder_id:
                     # Upload original file
+                    print(f"\n1️⃣ Uploading original file...")
                     upload_to_drive(input_path, f"original_{file.filename}", upload_folder_id)
                     
                     # Create and upload metadata
+                    print(f"\n2️⃣ Creating metadata...")
                     metadata = {
                         "upload_id": upload_id,
                         "timestamp": datetime.now().isoformat(),
@@ -345,28 +383,39 @@ async def split_worksheet(
                     upload_to_drive(metadata_path, 'metadata.json', upload_folder_id)
                     
                     # Create output subfolder
+                    print(f"\n3️⃣ Creating output subfolder...")
                     output_folder_id = create_drive_folder('output', upload_folder_id)
                     
                     if output_folder_id:
-                        # Upload all output PDFs
-                        for pdf_file in output_files:
+                        # Upload combined PDF first
+                        print(f"\n4️⃣ Uploading combined PDF...")
+                        upload_to_drive(combined_path, 'all_questions_combined.pdf', output_folder_id)
+                        
+                        # Upload all individual question PDFs
+                        print(f"\n5️⃣ Uploading {len(output_files)} individual question PDFs...")
+                        for i, pdf_file in enumerate(sorted(output_files), 1):
+                            print(f"   [{i}/{len(output_files)}] Uploading {pdf_file.name}...")
                             upload_to_drive(str(pdf_file), pdf_file.name, output_folder_id)
+                        
+                        # Upload debug images if they exist
+                        debug_files = list(Path(temp_dir).glob('debug_*.png'))
+                        if debug_files:
+                            print(f"\n6️⃣ Uploading {len(debug_files)} debug images...")
+                            debug_folder_id = create_drive_folder('debug', upload_folder_id)
+                            if debug_folder_id:
+                                for debug_file in debug_files:
+                                    upload_to_drive(str(debug_file), debug_file.name, debug_folder_id)
                     
-                    print(f"📁 Uploaded to Google Drive: {upload_id}")
+                    print(f"\n{'='*70}")
+                    print(f"✅ Successfully uploaded to Google Drive: {upload_folder_name}")
+                    print(f"{'='*70}\n")
                 
             except Exception as e:
+                print(f"\n{'='*70}")
                 print(f"⚠️ Failed to upload to Drive: {e}")
+                print(f"{'='*70}\n")
+                traceback.print_exc()
                 # Don't fail the request if Drive upload fails
-        
-        # Create combined PDF with all questions
-        combined_pdf = fitz.open()
-        for pdf_file in sorted(output_files):
-            src_pdf = fitz.open(pdf_file)
-            combined_pdf.insert_pdf(src_pdf)
-            src_pdf.close()
-        combined_path = os.path.join(output_dir, 'all_questions_combined.pdf')
-        combined_pdf.save(combined_path, garbage=4, deflate=True, clean=True, pretty=False,)
-        combined_pdf.close()
         
         # Create ZIP in memory
         zip_buffer = io.BytesIO()
@@ -410,7 +459,11 @@ async def split_worksheet(
         # 🆕 LOG ERRORS TO DRIVE
         if SAVE_TO_DRIVE and drive_service:
             try:
-                upload_folder_name = f"{upload_id}_ERROR"
+                print(f"\n{'='*70}")
+                print("📤 Logging error to Google Drive...")
+                print(f"{'='*70}")
+                
+                upload_folder_name = f"{upload_id}_ERROR_{Path(file.filename).stem}"
                 upload_folder_id = create_drive_folder(upload_folder_name, DRIVE_FOLDER_ID)
                 
                 if upload_folder_id:
@@ -441,8 +494,11 @@ async def split_worksheet(
                         json.dump(metadata, f, indent=2)
                     upload_to_drive(metadata_path, 'metadata.json', upload_folder_id)
                     
+                    print(f"✅ Error logged to Drive: {upload_folder_name}\n")
+                    
             except Exception as log_err:
                 print(f"⚠️ Failed to log error to Drive: {log_err}")
+                traceback.print_exc()
         
         raise HTTPException(
             status_code=500,
@@ -465,6 +521,8 @@ def health_check():
         "status": "healthy" if model_exists else "model_missing",
         "method": "YOLOv11 Custom Trained",
         "model_ready": model_exists,
+        "drive_enabled": SAVE_TO_DRIVE,
+        "drive_ready": drive_service is not None
     }
 
 
