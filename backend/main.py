@@ -21,7 +21,8 @@ import uuid
 from pocketbase import PocketBase
 from contextlib import asynccontextmanager
 
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import json
@@ -56,29 +57,40 @@ drive_service = None
 
 
 def get_drive_service():
-    """Initialize Google Drive API client"""
+    """Initialize Google Drive API client using OAuth"""
     try:
-        # Get credentials from environment variable
-        creds_json = os.environ.get("GOOGLE_CREDENTIALS")
-        if not creds_json:
-            print("⚠️ GOOGLE_CREDENTIALS not found")
+        # Get OAuth credentials from environment
+        client_id = os.environ.get("GOOGLE_CLIENT_ID")
+        client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+        refresh_token = os.environ.get("GOOGLE_REFRESH_TOKEN")
+        
+        if not all([client_id, client_secret, refresh_token]):
+            missing = []
+            if not client_id: missing.append("GOOGLE_CLIENT_ID")
+            if not client_secret: missing.append("GOOGLE_CLIENT_SECRET")
+            if not refresh_token: missing.append("GOOGLE_REFRESH_TOKEN")
+            print(f"⚠️ Missing OAuth credentials: {', '.join(missing)}")
+            print("   Run get_oauth_token.py locally to get these values")
             return None
         
-        # Parse JSON credentials
-        creds_info = json.loads(creds_json)
-        credentials = service_account.Credentials.from_service_account_info(
-            creds_info,
+        # Create credentials from refresh token
+        credentials = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
             scopes=['https://www.googleapis.com/auth/drive.file']
         )
         
+        # Refresh to get access token
+        credentials.refresh(Request())
+        
         service = build('drive', 'v3', credentials=credentials)
-        print("✅ Google Drive service initialized successfully")
+        print("✅ Google Drive OAuth initialized successfully")
         return service
-    except json.JSONDecodeError as e:
-        print(f"❌ Failed to parse GOOGLE_CREDENTIALS JSON: {e}")
-        return None
     except Exception as e:
-        print(f"❌ Failed to initialize Drive: {e}")
+        print(f"❌ Failed to initialize Drive with OAuth: {e}")
         return None
 
 
@@ -105,6 +117,7 @@ def upload_to_drive(local_path, drive_filename, parent_folder_id):
         print(f"✅ Uploaded: {drive_filename} (ID: {file.get('id')})")
         return file.get('id'), file.get('webViewLink')
     except Exception as e:
+        error_msg = str(e)
         print(f"❌ Drive upload failed for {drive_filename}: {e}")
         return None, None
 
@@ -134,6 +147,16 @@ def create_drive_folder(folder_name, parent_folder_id):
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     global drive_service
+    
+    # 🚨 SAFETY CHECK: Prevent deployment with hardcoded credentials
+    if IS_RAILWAY and "LOCAL TESTING ONLY" in open(__file__).read():
+        print("="*70)
+        print("🚨 ERROR: HARDCODED CREDENTIALS DETECTED IN PRODUCTION!")
+        print("="*70)
+        print("You must remove the LOCAL TESTING block before deploying!")
+        print("Search for '🔥 LOCAL TESTING ONLY' and delete that entire section.")
+        print("="*70)
+        raise RuntimeError("Remove hardcoded credentials before deployment")
     
     # PocketBase Auth
     try:
