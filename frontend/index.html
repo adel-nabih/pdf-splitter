@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Crop  - Split Exams into Individual Questions</title>
+    <title>Exam Crop - Automatically Split Exams into Individual Questions</title>
+    <meta name="description" content="Save hours of manual work. Upload your exam or worksheet and instantly split it into individual question PDFs.">
     <style>
         * {
             margin: 0;
@@ -13,36 +14,149 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Header/Nav */
+        .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            text-decoration: none;
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 20px;
+            gap: 10px;
         }
 
-        .container {
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 80px 30px 100px;
+            text-align: center;
+            color: white;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 52px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 22px;
+            margin-bottom: 40px;
+            opacity: 0.95;
+            line-height: 1.5;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary, .btn-secondary {
+            padding: 18px 40px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Upload Section - The functional part */
+        .upload-section {
+            background: #f8f9ff;
+            padding: 60px 30px;
+            margin-top: -50px;
+        }
+
+        .upload-container {
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
             padding: 50px;
-            max-width: 550px;
-            width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
         }
 
-        h1 {
+        .upload-title {
             color: #333;
-            font-size: 32px;
-            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 15px;
             text-align: center;
         }
 
-        .subtitle {
+        .upload-subtitle {
             color: #666;
             text-align: center;
             margin-bottom: 40px;
             font-size: 16px;
-            line-height: 1.5;
         }
 
         .upload-area {
@@ -198,16 +312,198 @@
             color: #2a7a2a;
         }
 
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #999;
-            font-size: 13px;
+        /* How It Works */
+        .how-it-works {
+            padding: 80px 30px;
+            background: white;
         }
 
-        .footer a {
+        .section-title {
+            text-align: center;
+            font-size: 40px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 60px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .steps {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+        }
+
+        .step {
+            text-align: center;
+            padding: 30px;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 auto 20px;
+        }
+
+        .step h3 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .step p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* Features */
+        .features {
+            padding: 80px 30px;
+            background: #f8f9ff;
+        }
+
+        .features-grid {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 35px;
+        }
+
+        .feature {
+            background: white;
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .feature h3 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .feature p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* Supported Formats */
+        .formats {
+            padding: 80px 30px;
+            background: white;
+        }
+
+        .format-badges {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .format-badge {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: 600;
             color: #667eea;
+            font-size: 16px;
+            border: 2px solid #667eea30;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 80px 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .cta-section h2 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .cta-section p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        /* Footer */
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 50px 30px 30px;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h4 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #a8b2d1;
+        }
+
+        .footer-section p, .footer-section a {
+            color: #cbd5e0;
             text-decoration: none;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #cbd5e0;
+            font-size: 14px;
         }
 
         /* Modal styles */
@@ -362,39 +658,197 @@
         .modal-skip button:hover {
             color: #667eea;
         }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero p {
+                font-size: 18px;
+            }
+
+            .section-title {
+                font-size: 32px;
+            }
+
+            .upload-container {
+                padding: 30px 25px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📄 Worksheet Splitter</h1>
-        <p class="subtitle">Upload your exam or worksheet and we'll split it into individual question PDFs</p>
-
-        <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">📤</div>
-            <div class="upload-text">Click to upload or drag file here</div>
-            <div class="upload-hint">PDF, JPG, JPEG, or PNG • Maximum 20MB</div>
-            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png">
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <a href="#" class="logo">
+                <span>📄</span>
+                <span>Exam Crop</span>
+            </a>
+            <nav class="nav-links">
+                <a href="#how-it-works">How It Works</a>
+                <a href="#features">Features</a>
+                <a href="#upload">Try It Now</a>
+            </nav>
         </div>
+    </header>
 
-        <div class="file-info" id="fileInfo">
-            <div class="file-name" id="fileName"></div>
-            <div class="file-size" id="fileSize"></div>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Split Exam Papers in Seconds</h1>
+            <p>Stop wasting hours cropping worksheets manually. Upload your exam and get individual question PDFs instantly.</p>
+            <div class="cta-buttons">
+                <a href="#upload" class="btn-primary">Try It Now</a>
+                <a href="#how-it-works" class="btn-secondary">See How It Works</a>
+            </div>
         </div>
+    </section>
 
-        <button class="split-btn" id="splitBtn">Split into Questions</button>
+    <!-- Upload Section (Functional Part) -->
+    <section class="upload-section" id="upload">
+        <div class="upload-container">
+            <h2 class="upload-title">Upload Your Worksheet</h2>
+            <p class="upload-subtitle">We'll automatically detect and split each question for you</p>
 
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <div class="loading-text">Processing your worksheet...</div>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">Click to upload or drag file here</div>
+                <div class="upload-hint">PDF, JPG, JPEG, or PNG • Max 20 pages • Max 20MB</div>
+                <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+
+            <button class="split-btn" id="splitBtn">Split into Questions</button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div class="loading-text">Processing your worksheet...</div>
+            </div>
+
+            <div class="message error" id="errorMsg"></div>
+            <div class="message success" id="successMsg"></div>
         </div>
+    </section>
 
-        <div class="message error" id="errorMsg"></div>
-        <div class="message success" id="successMsg"></div>
-
-        <div class="footer">
-            Free to use • Made with ❤️ for teachers
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-subtitle">Three simple steps to save hours of manual work</p>
+        
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Upload Your Exam</h3>
+                <p>Drag and drop your worksheet or exam paper. We support PDFs and images.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>AI Detection</h3>
+                <p>Our model automatically identifies each question and its boundaries with precision.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Download & Use</h3>
+                <p>Get a ZIP file with each question as a separate PDF, ready to share with students.</p>
+            </div>
         </div>
-    </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <h2 class="section-title">Built for Teachers</h2>
+        <p class="section-subtitle">Everything you need to prepare assignments faster</p>
+        
+        <div class="features-grid">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <h3>Lightning Fast</h3>
+                <p>Process entire exam papers in seconds. What used to take 30 minutes now takes 10 seconds.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎯</div>
+                <h3>Accurate Detection</h3>
+                <p>Trained on real exam formats to precisely identify question boundaries and numbering.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📚</div>
+                <h3>Multiple Formats</h3>
+                <p>Works with various exam boards and worksheet styles—from standardized tests to custom assignments.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <h3>Secure Processing</h3>
+                <p>Your files are processed securely and used to improve our detection model, helping us better serve diverse exam formats.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">💾</div>
+                <h3>Easy Organization</h3>
+                <p>Questions are automatically numbered and organized in a clean folder structure.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">💎</div>
+                <h3>Try It Now</h3>
+                <p>Start splitting worksheets today. We're currently in early access with generous limits while we refine the platform.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Supported Formats -->
+    <section class="formats">
+        <h2 class="section-title">Works With Your Curriculum</h2>
+        <p class="section-subtitle">Trained on multiple exam formats for accurate detection</p>
+        
+        <div class="format-badges">
+            <div class="format-badge">IGCSE</div>
+            <div class="format-badge">IB</div>
+            <div class="format-badge">SAT</div>
+            <div class="format-badge">Thanaweya Amma</div>
+            <div class="format-badge">Moasser</div>
+            <div class="format-badge">Custom Worksheets</div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Ready to Save Time?</h2>
+        <p>Join teachers who are already using Exam Crop to prepare faster</p>
+        <a href="#upload" class="btn-primary">Split Your First Worksheet</a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Exam Crop</h4>
+                <p>Making teachers' lives easier, one worksheet at a time.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Product</h4>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#features">Features</a>
+                <a href="#upload">Try It Now</a>
+            </div>
+            <div class="footer-section">
+                <h4>Support</h4>
+                <p>Have questions? We're here to help.</p>
+                <a href="mailto:support@examcrop.com">support@examcrop.com</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2025 Exam Crop. Made with ❤️ for teachers.</p>
+        </div>
+    </footer>
 
     <!-- Email Collection Modal -->
     <div class="modal-overlay" id="modalOverlay">
@@ -419,10 +873,9 @@
                 <label class="checkbox-label">
                     <input 
                         type="checkbox" 
-                        id="consentCheckbox" 
-                        required
+                        id="marketingOptIn"
                     >
-                    <span>I agree to receive updates and promotional emails about ExamCrop</span>
+                    <span>Send me updates about new features and tips for using Exam Crop</span>
                 </label>
                 
                 <button type="submit">Get Discount & Download</button>
@@ -448,11 +901,11 @@
                 return 'https://pdf-splitter-production-9d84.up.railway.app';
             }
             
-            // Fallback to current origin (shouldn't happen)
+            // Fallback to current origin
             return '';
         })();
 
-console.log('Using API:', API_BASE);
+        console.log('Using API:', API_BASE);
         
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
@@ -470,10 +923,21 @@ console.log('Using API:', API_BASE);
         const skipButton = document.getElementById('skipButton');
         const emailInput = document.getElementById('emailInput');
         const commentInput = document.getElementById('commentInput');
+        const marketingOptIn = document.getElementById('marketingOptIn');
 
         let pendingDownload = null;
-
         let selectedFile = null;
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
 
         uploadArea.addEventListener('click', () => fileInput.click());
 
@@ -543,6 +1007,7 @@ console.log('Using API:', API_BASE);
             modalOverlay.classList.remove('show');
             emailInput.value = '';
             commentInput.value = '';
+            marketingOptIn.checked = false;
         }
 
         function triggerDownload(blob, filename, questionCount) {
@@ -569,7 +1034,7 @@ console.log('Using API:', API_BASE);
             showSuccess(message);
         }
 
-        async function submitEmail(email, comment) {
+        async function submitEmail(email, comment, marketingOptIn) {
             if (!email && !comment) return;
 
             try {
@@ -579,6 +1044,7 @@ console.log('Using API:', API_BASE);
                     body: JSON.stringify({
                         email: email || "",
                         comment: comment || "",
+                        marketing_opt_in: marketingOptIn || false,
                         timestamp: new Date().toISOString()
                     })
                 });
@@ -620,8 +1086,9 @@ console.log('Using API:', API_BASE);
             
             const email = emailInput.value.trim();
             const comment = commentInput.value.trim();
+            const optIn = marketingOptIn.checked;
             
-            submitEmail(email, comment);
+            submitEmail(email, comment, optIn);
             
             hideModal();
             if (pendingDownload) {
@@ -651,7 +1118,7 @@ console.log('Using API:', API_BASE);
                 console.log('File:', selectedFile.name, selectedFile.size);
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
+                const timeoutId = setTimeout(() => controller.abort(), 180000);
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -719,13 +1186,10 @@ console.log('Using API:', API_BASE);
                 console.error('Error:', error);
                 showError(error.message);
             } finally {
-                // Only hide loading here, don't reset button yet
-                // Button will be re-enabled after modal is closed
                 if (!pendingDownload) {
                     loading.classList.remove('show');
                     splitBtn.disabled = false;
                 } else {
-                    // Re-enable after a delay to prevent double-clicks
                     setTimeout(() => {
                         splitBtn.disabled = false;
                     }, 1000);

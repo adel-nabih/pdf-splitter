@@ -16,6 +16,10 @@ import io
 import traceback
 import fitz
 
+import shutil
+from datetime import datetime
+import uuid
+
 from pocketbase import PocketBase
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -42,6 +46,9 @@ POCKETBASE_PASSWORD = os.environ.get("POCKETBASE_PASSWORD")
 
 pb = PocketBase(POCKETBASE_URL)
 
+SAVE_UPLOADS = os.environ.get("SAVE_UPLOADS", "true").lower() == "true"
+UPLOAD_STORAGE_DIR = Path("/mnt/user-data/upload-logs")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # This runs ON STARTUP
@@ -50,6 +57,10 @@ async def lifespan(app: FastAPI):
         print("✅ Successfully authenticated with PocketBase")
     except Exception as e:
         print(f"❌ PocketBase Auth Failed: {e}")
+
+    if SAVE_UPLOADS:
+        UPLOAD_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"✅ Upload logging enabled: {UPLOAD_STORAGE_DIR}")
     
     yield  # The app runs while this is held
     
@@ -58,8 +69,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Worksheet Splitter - YOLOv11 Custom",
-    description="AI-powered question splitting using custom-trained YOLOv11",
+    title="Worksheet Splitter - YOLOv26 Custom",
+    description="AI-powered question splitting using custom-trained YOLOv26",
     version="11.0.0",
     lifespan=lifespan
 )
@@ -109,26 +120,14 @@ async def split_worksheet(
 ):
     """
     Split worksheets using custom-trained YOLOv11 model.
-    
-    Args:
-        file: PDF, JPG, JPEG, or PNG
-        dpi: Processing resolution (300-600 recommended)
-        debug: Save intermediate visualization images
-        conf_threshold: YOLO confidence threshold (0.05-0.95)
-    
-    Returns:
-        ZIP file with individual question PDFs
     """
     
     # Check if model exists
     if not os.path.exists("best.pt"):
-        raise HTTPException(
-            status_code=503,
-            detail="Service Unavailable"
-        )
+        raise HTTPException(status_code=503, detail="Service Unavailable")
     
     MAX_SIZE = 20 * 1024 * 1024
-    MAX_PAGES = 20  # Free tier limit
+    MAX_PAGES = 20
     
     contents = await file.read()
     file_size_mb = len(contents) / (1024 * 1024)
@@ -136,7 +135,7 @@ async def split_worksheet(
     if len(contents) > MAX_SIZE:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large ({file_size_mb:.1f}MB). Maximum file size is 20MB during our testing phase. For larger files, please wait for our Pro plan launch!"
+            detail=f"File too large ({file_size_mb:.1f}MB). Maximum file size is 20MB during our testing phase."
         )
     
     allowed_extensions = ['.jpg', '.jpeg', '.png', '.pdf']
@@ -149,16 +148,13 @@ async def split_worksheet(
         )
     
     if not (100 <= dpi <= 600):
-        raise HTTPException(
-            status_code=400,
-            detail="DPI must be between 100 and 600"
-        )
+        raise HTTPException(status_code=400, detail="DPI must be between 100 and 600")
     
     if not (0.05 <= conf_threshold <= 0.95):
-        raise HTTPException(
-            status_code=400,
-            detail="Confidence threshold must be between 0.05 and 0.95"
-        )
+        raise HTTPException(status_code=400, detail="Confidence threshold must be between 0.05 and 0.95")
+    
+    # Generate unique ID for this upload
+    upload_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
     
     temp_dir = tempfile.mkdtemp()
     
@@ -167,6 +163,34 @@ async def split_worksheet(
         input_path = os.path.join(temp_dir, file.filename)
         with open(input_path, 'wb') as f:
             f.write(contents)
+        
+        # 🆕 SAVE ORIGINAL UPLOAD (if enabled)
+        if SAVE_UPLOADS:
+            try:
+                upload_log_dir = UPLOAD_STORAGE_DIR / upload_id
+                upload_log_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Save original file
+                saved_input = upload_log_dir / f"original_{file.filename}"
+                shutil.copy2(input_path, saved_input)
+                
+                # Save metadata
+                metadata = {
+                    "upload_id": upload_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "filename": file.filename,
+                    "file_size_mb": round(file_size_mb, 2),
+                    "dpi": dpi,
+                    "conf_threshold": conf_threshold,
+                }
+                
+                with open(upload_log_dir / "metadata.json", 'w') as f:
+                    import json
+                    json.dump(metadata, f, indent=2)
+                
+                print(f"📁 Saved upload: {upload_id}")
+            except Exception as e:
+                print(f"⚠️ Failed to save upload log: {e}")
         
         # Check page count for PDFs BEFORE processing
         if file_ext == '.pdf':
@@ -178,7 +202,7 @@ async def split_worksheet(
                 if page_count > MAX_PAGES:
                     raise HTTPException(
                         status_code=413,
-                        detail=f"Your PDF has {page_count} pages. During our testing phase, we support up to {MAX_PAGES} pages per document. We're working hard to bring you unlimited pages with our Pro plan soon! For now, please split your document into smaller sections. Thank you for your understanding! 🙏"
+                        detail=f"Your PDF has {page_count} pages. During our testing phase, we support up to {MAX_PAGES} pages per document."
                     )
                 
                 print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB, {page_count} pages)")
@@ -188,7 +212,6 @@ async def split_worksheet(
                 print(f"Warning: Could not check page count: {e}")
                 print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB)")
         else:
-            # For images, assume 1 page
             print(f"\nProcessing: {file.filename} ({file_size_mb:.1f}MB, 1 page)")
         
         print(f"  DPI: {dpi}, Confidence: {conf_threshold}")
@@ -209,21 +232,41 @@ async def split_worksheet(
                 conf_threshold=conf_threshold
             )
         except SystemExit:
-            raise HTTPException(
-                status_code=422,
-                detail="No questions detected"
-            )
+            raise HTTPException(status_code=422, detail="No questions detected")
         
         # Check output
         output_files = list(Path(output_dir).glob('*.pdf'))
         
         if not output_files:
-            raise HTTPException(
-                status_code=422,
-                detail="No questions detected"
-            )
+            raise HTTPException(status_code=422, detail="No questions detected")
         
         print(f"✓ Successfully split into {len(output_files)} questions")
+        
+        # 🆕 SAVE OUTPUT FILES (if enabled)
+        if SAVE_UPLOADS:
+            try:
+                upload_log_dir = UPLOAD_STORAGE_DIR / upload_id
+                output_log_dir = upload_log_dir / "output"
+                output_log_dir.mkdir(exist_ok=True)
+                
+                # Copy all output PDFs
+                for pdf_file in output_files:
+                    shutil.copy2(pdf_file, output_log_dir / pdf_file.name)
+                
+                # Update metadata with results
+                metadata_path = upload_log_dir / "metadata.json"
+                if metadata_path.exists():
+                    import json
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                    metadata["questions_detected"] = len(output_files)
+                    metadata["processing_status"] = "success"
+                    with open(metadata_path, 'w') as f:
+                        json.dump(metadata, f, indent=2)
+                
+                print(f"📁 Saved outputs: {len(output_files)} questions")
+            except Exception as e:
+                print(f"⚠️ Failed to save output log: {e}")
         
         # Create combined PDF with all questions
         combined_pdf = fitz.open()
@@ -232,20 +275,17 @@ async def split_worksheet(
             combined_pdf.insert_pdf(src_pdf)
             src_pdf.close()
         combined_path = os.path.join(output_dir, 'all_questions_combined.pdf')
-        combined_pdf.save(combined_path, garbage=4, deflate=True, clean=True, pretty=False,)
+        combined_pdf.save(combined_path, garbage=4, deflate=True, clean=True, pretty=False)
         combined_pdf.close()
         
         # Create ZIP in memory
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            # Add combined PDF
             zip_file.write(combined_path, 'all_questions_combined.pdf')
             
-            # Add question PDFs
             for pdf_file in sorted(output_files):
                 zip_file.write(pdf_file, pdf_file.name)
             
-            # Add debug images if enabled
             if debug:
                 for debug_file in Path(temp_dir).glob('debug_*.png'):
                     zip_file.write(debug_file, f"debug/{debug_file.name}")
@@ -274,10 +314,27 @@ async def split_worksheet(
         error_trace = traceback.format_exc()
         print(f"\n❌ ERROR: {error_trace}")
         
-        raise HTTPException(
-            status_code=500,
-            detail=f"Processing failed: {str(e)}"
-        )
+        # 🆕 LOG ERRORS (if enabled)
+        if SAVE_UPLOADS:
+            try:
+                upload_log_dir = UPLOAD_STORAGE_DIR / upload_id
+                metadata_path = upload_log_dir / "metadata.json"
+                if metadata_path.exists():
+                    import json
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                    metadata["processing_status"] = "error"
+                    metadata["error"] = str(e)
+                    with open(metadata_path, 'w') as f:
+                        json.dump(metadata, f, indent=2)
+                
+                # Save error trace
+                with open(upload_log_dir / "error.log", 'w') as f:
+                    f.write(error_trace)
+            except Exception as log_err:
+                print(f"⚠️ Failed to log error: {log_err}")
+        
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
     
     finally:
         if temp_dir and os.path.exists(temp_dir):
