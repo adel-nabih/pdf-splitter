@@ -148,16 +148,6 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     global drive_service
     
-    # 🚨 SAFETY CHECK: Prevent deployment with hardcoded credentials
-    if IS_RAILWAY and "LOCAL TESTING ONLY" in open(__file__).read():
-        print("="*70)
-        print("🚨 ERROR: HARDCODED CREDENTIALS DETECTED IN PRODUCTION!")
-        print("="*70)
-        print("You must remove the LOCAL TESTING block before deploying!")
-        print("Search for '🔥 LOCAL TESTING ONLY' and delete that entire section.")
-        print("="*70)
-        raise RuntimeError("Remove hardcoded credentials before deployment")
-    
     # PocketBase Auth
     try:
         pb.admins.auth_with_password(POCKETBASE_EMAIL, POCKETBASE_PASSWORD)
