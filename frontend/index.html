@@ -3,8 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Crop - Automatically Split Exams into Individual Questions</title>
-    <meta name="description" content="Save hours of manual work. Upload your exam or worksheet and instantly split it into individual question PDFs.">
+    
+    <!-- Primary Meta Tags -->
+    <title>Exam Crop - Split Exam Papers & Worksheets into Individual Questions | Free Tool for Teachers</title>
+    <meta name="title" content="Exam Crop - Split Exam Papers & Worksheets into Individual Questions">
+    <meta name="description" content="Automatically split exam papers and worksheets into individual question PDFs in seconds. Free AI-powered tool for teachers. Supports IGCSE, IB, SAT, Thanaweya Amma, and more.">
+    <meta name="keywords" content="exam splitter, worksheet splitter, PDF question separator, split exam questions, teacher tools, IGCSE exam prep, IB worksheet tool, SAT question extractor, exam crop">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://examcrop.com/">
+    <meta property="og:title" content="Exam Crop - Split Exam Papers into Individual Questions">
+    <meta property="og:description" content="Automatically split exam papers and worksheets into individual question PDFs in seconds. Free AI-powered tool for teachers.">
+    <meta property="og:image" content="https://examcrop.com/og-image.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://examcrop.com/">
+    <meta property="twitter:title" content="Exam Crop - Split Exam Papers into Individual Questions">
+    <meta property="twitter:description" content="Automatically split exam papers and worksheets into individual question PDFs in seconds. Free AI-powered tool for teachers.">
+    <meta property="twitter:image" content="https://examcrop.com/twitter-image.png">
+    
+    <!-- Additional SEO -->
+    <link rel="canonical" href="https://examcrop.com/">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta name="author" content="Exam Crop">
+    
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Exam Crop",
+      "url": "https://examcrop.com",
+      "description": "AI-powered tool to automatically split exam papers and worksheets into individual question PDFs",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
     <style>
         * {
             margin: 0;
@@ -444,6 +486,38 @@
             border: 2px solid #667eea30;
         }
 
+        /* FAQ Section */
+        .faq-section {
+            padding: 80px 30px;
+            background: #f8f9ff;
+        }
+
+        .faq-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .faq-item h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .faq-item p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
         /* CTA Section */
         .cta-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -819,6 +893,42 @@
         </div>
     </section>
 
+    <!-- FAQ Section for SEO -->
+    <section class="faq-section">
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <div class="faq-container">
+            <div class="faq-item">
+                <h3>How do I split a PDF exam into individual questions?</h3>
+                <p>Upload your PDF exam to Exam Crop, and our AI automatically detects question boundaries and splits each question into a separate PDF file. The process takes just seconds.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>What exam formats does Exam Crop support?</h3>
+                <p>Exam Crop works with IGCSE, IB, SAT, Thanaweya Amma, Moasser exams, and custom worksheets. We support PDF, JPG, and PNG file formats up to 20 pages and 20MB.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Is Exam Crop free for teachers?</h3>
+                <p>Exam Crop is currently free during our early access phase. We're refining the platform and will introduce tiered plans with different limits in the future.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>How accurate is the automatic question detection?</h3>
+                <p>Our AI model is trained on thousands of real exam papers from different exam boards, achieving high accuracy across IGCSE, IB, SAT, and other standardized test formats.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Can I use Exam Crop for worksheets and homework assignments?</h3>
+                <p>Yes! Exam Crop works with any structured worksheet or assignment where questions are clearly separated. It's perfect for creating individual practice problems for students.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>What happens to my uploaded files?</h3>
+                <p>Your files are processed securely and stored to help improve our AI model's accuracy across diverse exam formats. This helps us better serve teachers worldwide.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- CTA Section -->
     <section class="cta-section">
         <h2>Ready to Save Time?</h2>
@@ -855,7 +965,7 @@
         <div class="modal">
             <button class="modal-close" id="modalClose">×</button>
             <h2>🎉 Almost done!</h2>
-            <p>Your questions are ready! <strong>Get 20% off our Pro plan</strong> by sharing your email:</p>
+            <p>Your questions are ready! <strong>Enter your email to download:</strong></p>
             
             <form class="modal-form" id="emailForm">
                 <input 
@@ -878,12 +988,8 @@
                     <span>Send me updates about new features and tips for using Exam Crop</span>
                 </label>
                 
-                <button type="submit">Get Discount & Download</button>
+                <button type="submit">Download Questions</button>
             </form>
-            
-            <div class="modal-skip">
-                <button type="button" id="skipButton">Skip discount and download</button>
-            </div>
         </div>
     </div>
 
@@ -920,7 +1026,6 @@
         const modalOverlay = document.getElementById('modalOverlay');
         const modalClose = document.getElementById('modalClose');
         const emailForm = document.getElementById('emailForm');
-        const skipButton = document.getElementById('skipButton');
         const emailInput = document.getElementById('emailInput');
         const commentInput = document.getElementById('commentInput');
         const marketingOptIn = document.getElementById('marketingOptIn');
@@ -1058,18 +1163,6 @@
         }
 
         modalClose.addEventListener('click', () => {
-            hideModal();
-            if (pendingDownload) {
-                triggerDownload(
-                    pendingDownload.blob,
-                    pendingDownload.filename,
-                    pendingDownload.questionCount
-                );
-                pendingDownload = null;
-            }
-        });
-
-        skipButton.addEventListener('click', () => {
             hideModal();
             if (pendingDownload) {
                 triggerDownload(
